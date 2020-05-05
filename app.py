@@ -5,7 +5,7 @@
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import Flask, render_template, request, Response, flash, redirect, url_for, abort, jsonify
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -13,6 +13,12 @@ import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
+import sys
+from helpers.helpers import str_to_bool
+from flask_marshmallow import Marshmallow
+from marshmallow_sqlalchemy import ModelSchema
+
+
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -21,6 +27,7 @@ app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
 db = SQLAlchemy(app)
+ma=Marshmallow(app)
 
 migrate = Migrate(app, db)
 
@@ -44,13 +51,11 @@ class Venue(db.Model):
     phone = db.Column(db.String(120), nullable=False)
     image_link = db.Column(db.String(500), nullable=False)
     facebook_link = db.Column(db.String(120), nullable=False)
-    genres = db.Column(db.ARRAY(db.Integer()), nullable=False)
+    genres = db.Column(db.ARRAY(db.String), nullable=False)
     website_link = db.Column(db.String(120), nullable=False)
     seeking_talent = db.Column(db.Boolean, nullable = False)
     seeking_description = db.Column(db.String, nullable=False)
-    past_shows = db.Column(db.ARRAY(db.Integer()), nullable=False)
-    upcoming_shows = db.Column(db.ARRAY(db.Integer()), nullable=False)
-    artists = db.relationship('Artist', secondary = 'Artist')
+    artists = db.relationship('Artist', secondary = 'show')
 
     
     
@@ -61,22 +66,18 @@ class Artist(db.Model):
     __tablename__ = 'Artist'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False)
-    city = db.Column(db.String(120), nullable=False)
-    state = db.Column(db.String(120), nullable=False)
-    phone = db.Column(db.String(120), nullable=False)
-    genres = db.Column(db.String(120), nullable=False)
-    image_link = db.Column(db.String(500), nullable=False)
-    facebook_link = db.Column(db.String(120), nullable=False)
-    seeking_venues = db.Column(db.String(120), nullable=False)
-    website_link = db.Column(db.String(120), nullable=False)
-    seeking_artists = db.Column(db.String(120), nullable=False)
-    genres = db.Column(db.ARRAY(db.Integer()), nullable=False)
-    seeking_description = db.Column(db.String, nullable=False)
-    past_shows = db.Column(db.ARRAY(db.Integer()), nullable=False)
-    
-    
-    venues = db.relationship('Venue', secondary='Venue')
+    name = db.Column(db.String)
+    city = db.Column(db.String(120))
+    state = db.Column(db.String(120))
+    phone = db.Column(db.String(120))
+    image_link = db.Column(db.String(500))
+    facebook_link = db.Column(db.String(120))
+    website_link = db.Column(db.String(120))
+    genres = db.Column(db.ARRAY(db.String))
+    seeking_venue = db.Column(db.Boolean)
+    seeking_description = db.Column(db.String)
+   
+    venues = db.relationship('Venue', secondary='show')
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
@@ -84,13 +85,16 @@ class Artist(db.Model):
 class Show(db.Model):
     __tablename__='show'
     id = db.Column(db.Integer, primary_key=True)
-    artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'))
-    venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'))
+    artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'), primary_key=True)
+    venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'), primary_key=True)
     dttm = db.Column(db.DateTime, default=datetime.utcnow)
     
-    venue = db.relationship('Venue', back_populates="artists")
-    product = db.relationship('Artist', back_populates="venues")
+    # venue = db.relationship('Venue', back_populates="artists")
+    # product = db.relationship('Artist', back_populates="venues")
 
+class ArtistSchema(ModelSchema):
+      class Meta:
+            model = Artist
 # db.create_all()
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
@@ -453,7 +457,30 @@ def create_artist_submission():
   # called upon submitting the new artist listing form
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
-
+  error=False
+  body={}
+  try:
+    name, city, state, phone, genres, facebook_link, image_link, website_link, seeking_venue, seeking_description  = [request.form[k] for k in ('name', 'city', 'state', 'phone', 'genres', 'facebook_link', 'image_link', 'website_link', 'seeking_venue', 'seeking_description')]
+    print(request.form)
+    new_artist = Artist(name=name, city=city, state=state, phone=phone, image_link=image_link, facebook_link=facebook_link, website_link=website_link, genres=genres, seeking_venue=str_to_bool(seeking_venue), seeking_description=seeking_description)
+    artist_schema = ArtistSchema()
+    db.session.add(new_artist)
+    db.session.commit()
+    db_artist = Artist.query.get(new_artist.id)
+    result = artist_schema.dump(db_artist)
+  except:
+    error=True
+    db.session.rollback()
+    print(sys.exc_info)
+  finally:
+    db.session.close()
+  if error:
+    print(error)
+    abort(400)
+  if not error:
+    return jsonify(result)
+    
+  
   # on successful db insert, flash success
   flash('Artist ' + request.form['name'] + ' was successfully listed!')
   # TODO: on unsuccessful db insert, flash an error instead.

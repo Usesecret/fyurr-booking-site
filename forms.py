@@ -1,6 +1,6 @@
 from datetime import datetime
 from flask_wtf import Form
-from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField
+from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField, RadioField
 from wtforms.validators import DataRequired, AnyOf, URL
 
 class ShowForm(Form):
@@ -116,6 +116,15 @@ class VenueForm(Form):
     facebook_link = StringField(
         'facebook_link', validators=[URL()]
     )
+    website_link = StringField(
+        'website_link', validators=[URL()]
+    )
+    seeking_talent = RadioField(
+        'Radio', coerce=bool, validators=[DataRequired()],  choices=[(True, True), (False, False)] 
+    )
+    seeking_description = StringField(
+        'seeking_description', validators=[DataRequired()]
+    )
 
 class ArtistForm(Form):
     name = StringField(
@@ -187,6 +196,9 @@ class ArtistForm(Form):
     image_link = StringField(
         'image_link'
     )
+    website_link = StringField(
+        'website_link'
+    )
     genres = SelectMultipleField(
         # TODO implement enum restriction
         'genres', validators=[DataRequired()],
@@ -215,6 +227,14 @@ class ArtistForm(Form):
     facebook_link = StringField(
         # TODO implement enum restriction
         'facebook_link', validators=[URL()]
+    )
+    seeking_venue = RadioField(
+        # TODO implement enum restriction
+        'Radio', coerce=bool, validators=[DataRequired()],  choices=[(True, True), (False, False)] 
+    )
+    seeking_description = StringField(
+        # TODO implement enum restriction
+        'seeking_description', validators=[DataRequired()]
     )
 
 # TODO IMPLEMENT NEW ARTIST FORM AND NEW SHOW FORM
