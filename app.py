@@ -95,6 +95,9 @@ class Show(db.Model):
 class ArtistSchema(ModelSchema):
       class Meta:
             model = Artist
+class VenueSchema(ModelSchema):
+      class Meta:
+            model = Venue
 # db.create_all()
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
@@ -263,13 +266,38 @@ def create_venue_form():
 def create_venue_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
+  error=False
+  body={}
+  try:
+    name, city, state, address, phone, image_link, facebook_link, genres, website_link, seeking_talent, seeking_description  = [request.form[k] for k in ('name', 'city', 'state', 'address', 'phone', 'image_link', 'facebook_link', 'genres', 'website_link', 'seeking_talent', 'seeking_description')]
+    print(request.form)
+    new_venue = Venue(name=name, city=city, state=state, address=address, phone=phone, image_link=image_link, facebook_link=facebook_link, genres=genres, website_link=website_link,  seeking_talent=str_to_bool(seeking_talent), seeking_description=seeking_description)
+    venue_schema = VenueSchema()
+    db.session.add(new_venue)
+    db.session.commit()
+    db_venue = Venue.query.get(new_venue.id)
+    result = venue_schema.dump(db_venue)
+    # on successful db insert, flash success
+    flash('Venue ' + request.form['name'] + ' was successfully listed!')
+  except:
+    error=True
+    db.session.rollback()
+    # TODO: on unsuccessful db insert, flash an error instead.
+    flash('An error occurred. Artist ' + name + ' could not be listed.')
+    print(sys.exc_info)
+  finally:
+    db.session.close()
+  if error:
+    # TODO: on unsuccessful db insert, flash an error instead.
+    flash('An error occurred. Venue ' + name + ' could not be listed.')
+    abort(400)
+  if not error:
+    # return jsonify(result)
+    # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
+    return render_template('pages/home.html')
+  
 
-  # on successful db insert, flash success
-  flash('Venue ' + request.form['name'] + ' was successfully listed!')
-  # TODO: on unsuccessful db insert, flash an error instead.
-  # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
-  # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-  return render_template('pages/home.html')
+
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
@@ -468,9 +496,13 @@ def create_artist_submission():
     db.session.commit()
     db_artist = Artist.query.get(new_artist.id)
     result = artist_schema.dump(db_artist)
+    # on successful db insert, flash success
+    flash('Artist ' + request.form['name'] + ' was successfully listed!')
   except:
     error=True
     db.session.rollback()
+    # TODO: on unsuccessful db insert, flash an error instead.
+    flash('An error occurred. Artist ' + name + ' could not be listed.')
     print(sys.exc_info)
   finally:
     db.session.close()
@@ -478,14 +510,8 @@ def create_artist_submission():
     print(error)
     abort(400)
   if not error:
-    return jsonify(result)
-    
-  
-  # on successful db insert, flash success
-  flash('Artist ' + request.form['name'] + ' was successfully listed!')
-  # TODO: on unsuccessful db insert, flash an error instead.
-  # e.g., flash('An error occurred. Artist ' + data.name + ' could not be listed.')
-  return render_template('pages/home.html')
+    # return jsonify(result)
+    return render_template('pages/home.html')
 
 
 #  Shows
