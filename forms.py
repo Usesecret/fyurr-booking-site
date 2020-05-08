@@ -12,7 +12,7 @@ class ShowForm(Form):
     )
     start_time = DateTimeField(
         'start_time',
-        validators=[DataRequired()],
+        # validators=[DataRequired()],
         default= datetime.today()
     )
 
@@ -123,7 +123,7 @@ class VenueForm(Form):
         'Radio', coerce=bool, validators=[DataRequired()],  choices=[(True, True), (False, False)] 
     )
     seeking_description = StringField(
-        'seeking_description', validators=[DataRequired()]
+        'seeking_description', validators=[URL()]
     )
 
 class ArtistForm(Form):
@@ -234,7 +234,7 @@ class ArtistForm(Form):
     )
     seeking_description = StringField(
         # TODO implement enum restriction
-        'seeking_description', validators=[DataRequired()]
+        'seeking_description', validators=[URL()]
     )
 
 # TODO IMPLEMENT NEW ARTIST FORM AND NEW SHOW FORM
